@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Freshness Analyzer</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#4CAF50',secondary:'#FF5722'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :where([class^="ri-"])::before { content: "\f3c2"; }
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .upload-area {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #4CAF50;
+        }
+        .camera-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .result-card {
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+        .result-card.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="relative min-h-screen flex flex-col">
+        <!-- Background Image -->
+        <div class="absolute inset-0 z-0">
+            <div class="absolute inset-0 bg-black opacity-50"></div>
+            <img src="https://readdy.ai/api/search-image?query=A%20beautiful%20arrangement%20of%20fresh%20colorful%20fruits%20in%20a%20wooden%20bowl%20on%20a%20light%20background.%20The%20image%20shows%20vibrant%20red%20apples%2C%20yellow%20bananas%2C%20orange%20citrus%20fruits%2C%20green%20grapes%2C%20and%20purple%20plums.%20The%20fruits%20look%20extremely%20fresh%2C%20juicy%20and%20appetizing.%20The%20composition%20is%20well-balanced%20with%20soft%20natural%20lighting%20highlighting%20the%20freshness%20and%20texture%20of%20the%20fruits.%20The%20background%20is%20clean%20and%20minimal.&width=1920&height=1080&seq=12345&orientation=landscape" alt="Fresh Fruits" class="w-full h-full object-cover object-top">
+        </div>
+
+        <!-- Content -->
+        <div class="relative z-10 container mx-auto px-4 py-8 flex-1 flex flex-col items-center justify-center">
+            <!-- Header -->
+            <header class="text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Food Freshness Analyzer</h1>
+                <p class="text-xl text-gray-200 max-w-2xl mx-auto">Check your food's freshness instantly with our advanced AI technology</p>
+            </header>
+
+            <!-- Main Content -->
+            <main class="w-full max-w-3xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+                <div class="p-6 md:p-8">
+                    <!-- Upload Section -->
+                    <div class="flex flex-col md:flex-row gap-4 mb-6">
+                        <button id="galleryBtn" class="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-button hover:bg-gray-50 transition-all shadow-sm whitespace-nowrap">
+                            <div class="w-6 h-6 flex items-center justify-center">
+                                <i class="ri-image-line text-primary ri-lg"></i>
+                            </div>
+                            <span>Choose from Gallery</span>
+                        </button>
+                        <button id="cameraBtn" class="flex-1 flex items-center justify-center gap-2 bg-primary text-white py-3 px-4 rounded-button hover:bg-primary/90 transition-all shadow-sm whitespace-nowrap">
+                            <div class="w-6 h-6 flex items-center justify-center">
+                                <i class="ri-camera-line ri-lg"></i>
+                            </div>
+                            <span>Take Photo</span>
+                        </button>
+                        <input type="file" id="fileInput" accept="image/*">
+                    </div>
+
+                    <!-- Preview Area -->
+                    <div class="mb-6">
+                        <div id="previewContainer" class="upload-area h-64 rounded flex items-center justify-center bg-gray-50 overflow-hidden">
+                            <div id="placeholderText" class="text-center p-4">
+                                <div class="w-12 h-12 mx-auto mb-2 flex items-center justify-center text-gray-400">
+                                    <i class="ri-image-add-line ri-2x"></i>
+                                </div>
+                                <p class="text-gray-500">Preview your image here</p>
+                                <p class="text-xs text-gray-400 mt-2">Supported formats: JPG, PNG, JPEG</p>
+                            </div>
+                            <img id="previewImage" class="hidden max-h-full max-w-full object-contain" alt="Food preview">
+                        </div>
+                    </div>
+
+                    <!-- File Info -->
+                    <div class="flex justify-between text-sm text-gray-500 mb-6">
+                        <p>Max file size: 5MB</p>
+                        <p id="fileInfo" class="hidden">Selected: <span id="fileName">No file selected</span></p>
+                    </div>
+
+                    <!-- Analyze Button -->
+                    <button id="analyzeBtn" class="w-full bg-primary text-white py-3 px-6 rounded-button hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap hidden">
+                        <span class="flex items-center justify-center gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center">
+                                <i class="ri-search-line"></i>
+                            </div>
+                            Analyze Freshness
+                        </span>
+                    </button>
+
+                    <!-- Loading Indicator -->
+                    <div id="loadingIndicator" class="hidden py-4 text-center">
+                        <div class="inline-block animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mb-2"></div>
+                        <p class="text-gray-600">Analyzing your food...</p>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsContainer" class="result-card mt-8 hidden">
+                        <div class="border rounded-xl overflow-hidden">
+                            <div class="bg-gray-50 px-6 py-4 border-b">
+                                <h3 class="text-lg font-semibold text-gray-800">Analysis Results</h3>
+                            </div>
+                            <div class="p-6">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h4 class="text-lg font-medium mb-1">Freshness Status:</h4>
+                                        <div id="freshnessStatus" class="text-2xl font-bold">-</div>
+                                    </div>
+                                    <div id="statusIndicator" class="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl">
+                                        <i class="ri-check-line ri-2x"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-gray-700">Confidence Level:</span>
+                                        <span id="confidencePercentage" class="font-semibold">-</span>
+                                    </div>
+                                    <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div id="confidenceBar" class="h-full bg-primary" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-6 pt-4 border-t">
+                                    <h4 class="text-gray-700 font-medium mb-3">Recommendations:</h4>
+                                    <ul id="recommendations" class="text-gray-600 space-y-2">
+                                        <li class="flex items-start gap-2">
+                                            <div class="w-5 h-5 flex items-center justify-center text-primary mt-0.5">
+                                                <i class="ri-information-line"></i>
+                                            </div>
+                                            <span>Analysis will provide detailed recommendations here</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Camera Container -->
+        <div id="cameraContainer" class="camera-container">
+            <video id="cameraFeed" class="max-w-full max-h-[70vh] rounded-lg mb-4" autoplay></video>
+            <div class="flex gap-4">
+                <button id="captureBtn" class="bg-primary text-white py-2 px-6 rounded-button hover:bg-primary/90 transition-all shadow-sm whitespace-nowrap">
+                    <span class="flex items-center justify-center gap-2">
+                        <div class="w-5 h-5 flex items-center justify-center">
+                            <i class="ri-camera-line"></i>
+                        </div>
+                        Take Photo
+                    </span>
+                </button>
+                <button id="closeCameraBtn" class="bg-white text-gray-700 py-2 px-6 rounded-button hover:bg-gray-50 transition-all shadow-sm whitespace-nowrap">
+                    <span class="flex items-center justify-center gap-2">
+                        <div class="w-5 h-5 flex items-center justify-center">
+                            <i class="ri-close-line"></i>
+                        </div>
+                        Cancel
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileInput');
+            const galleryBtn = document.getElementById('galleryBtn');
+            const cameraBtn = document.getElementById('cameraBtn');
+            const previewImage = document.getElementById('previewImage');
+            const previewContainer = document.getElementById('previewContainer');
+            const placeholderText = document.getElementById('placeholderText');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const freshnessStatus = document.getElementById('freshnessStatus');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const confidencePercentage = document.getElementById('confidencePercentage');
+            const confidenceBar = document.getElementById('confidenceBar');
+            const recommendations = document.getElementById('recommendations');
+            
+            // Camera elements
+            const cameraContainer = document.getElementById('cameraContainer');
+            const cameraFeed = document.getElementById('cameraFeed');
+            const captureBtn = document.getElementById('captureBtn');
+            const closeCameraBtn = document.getElementById('closeCameraBtn');
+            
+            let stream = null;
+
+            // Gallery button click
+            galleryBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // File input change
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    
+                    // Check file size (5MB limit)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('File size exceeds 5MB limit. Please choose a smaller file.');
+                        return;
+                    }
+                    
+                    // Check file type
+                    const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+                    if (!validTypes.includes(file.type)) {
+                        alert('Invalid file type. Please select a JPG or PNG image.');
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        displayPreview(e.target.result);
+                        fileName.textContent = file.name;
+                        fileInfo.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Camera button click
+            cameraBtn.addEventListener('click', function() {
+                openCamera();
+            });
+
+            // Capture button click
+            captureBtn.addEventListener('click', function() {
+                capturePhoto();
+            });
+
+            // Close camera button click
+            closeCameraBtn.addEventListener('click', function() {
+                closeCamera();
+            });
+
+            // Analyze button click
+            analyzeBtn.addEventListener('click', function() {
+                analyzeImage();
+            });
+
+            // Open camera function
+            function openCamera() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function(mediaStream) {
+                            stream = mediaStream;
+                            cameraFeed.srcObject = mediaStream;
+                            cameraContainer.style.display = 'flex';
+                        })
+                        .catch(function(error) {
+                            console.error('Camera error:', error);
+                            alert('Unable to access camera. Please check permissions or try using gallery upload.');
+                        });
+                } else {
+                    alert('Your browser does not support camera access. Please use gallery upload instead.');
+                }
+            }
+
+            // Close camera function
+            function closeCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+                cameraContainer.style.display = 'none';
+            }
+
+            // Capture photo function
+            function capturePhoto() {
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraFeed.videoWidth;
+                canvas.height = cameraFeed.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg');
+                
+                displayPreview(imageData);
+                closeCamera();
+                
+                // Set file info
+                fileName.textContent = 'Camera_Photo_' + new Date().toLocaleTimeString();
+                fileInfo.classList.remove('hidden');
+            }
+
+            // Display preview function
+            function displayPreview(src) {
+                previewImage.src = src;
+                previewImage.classList.remove('hidden');
+                placeholderText.classList.add('hidden');
+                analyzeBtn.classList.remove('hidden');
+            }
+
+            // Analyze image function
+            function analyzeImage() {
+                // Hide analyze button and show loading
+                analyzeBtn.classList.add('hidden');
+                loadingIndicator.classList.remove('hidden');
+                
+                // Simulate analysis (would be replaced with actual API call)
+                setTimeout(function() {
+                    loadingIndicator.classList.add('hidden');
+                    showResults();
+                }, 2000);
+            }
+
+            // Show results function
+            function showResults() {
+                // Generate random result for demo
+                const isFresh = Math.random() > 0.3;
+                const confidence = Math.floor(70 + Math.random() * 30);
+                
+                // Update UI
+                freshnessStatus.textContent = isFresh ? 'Fresh' : 'Spoiled';
+                freshnessStatus.className = isFresh ? 'text-2xl font-bold text-primary' : 'text-2xl font-bold text-red-500';
+                
+                statusIndicator.className = isFresh ? 
+                    'w-16 h-16 rounded-full flex items-center justify-center text-white text-xl bg-primary' : 
+                    'w-16 h-16 rounded-full flex items-center justify-center text-white text-xl bg-red-500';
+                
+                statusIndicator.innerHTML = isFresh ? 
+                    '<i class="ri-check-line ri-2x"></i>' : 
+                    '<i class="ri-close-line ri-2x"></i>';
+                
+                confidencePercentage.textContent = confidence + '%';
+                confidenceBar.style.width = confidence + '%';
+                confidenceBar.className = isFresh ? 'h-full bg-primary' : 'h-full bg-red-500';
+                
+                // Update recommendations
+                if (isFresh) {
+                    recommendations.innerHTML = `
+                        <li class="flex items-start gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center text-primary mt-0.5">
+                                <i class="ri-check-line"></i>
+                            </div>
+                            <span>This food appears to be fresh and safe to consume</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center text-primary mt-0.5">
+                                <i class="ri-refrigerator-line"></i>
+                            </div>
+                            <span>Store in refrigerator to maintain freshness</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center text-primary mt-0.5">
+                                <i class="ri-timer-line"></i>
+                            </div>
+                            <span>Best consumed within 3-4 days</span>
+                        </li>
+                    `;
+                } else {
+                    recommendations.innerHTML = `
+                        <li class="flex items-start gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center text-red-500 mt-0.5">
+                                <i class="ri-alert-line"></i>
+                            </div>
+                            <span>This food appears to be spoiled and not safe to consume</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center text-red-500 mt-0.5">
+                                <i class="ri-delete-bin-line"></i>
+                            </div>
+                            <span>Dispose of the food properly</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <div class="w-5 h-5 flex items-center justify-center text-red-500 mt-0.5">
+                                <i class="ri-information-line"></i>
+                            </div>
+                            <span>Check other similar items for spoilage</span>
+                        </li>
+                    `;
+                }
+                
+                // Show results
+                resultsContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    resultsContainer.classList.add('show');
+                }, 100);
+            }
+        });
+    </script>
+</body>
+</html>
